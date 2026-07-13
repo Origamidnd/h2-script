@@ -20,7 +20,7 @@ fi
 
 # ---------- 1. Ввод параметров ----------
 
-read -rp "Домен для этой ноды (например wp.origamirealms.com): " DOMAIN
+read -rp "Домен для этой ноды (например node1.example.com): " DOMAIN
 if [[ -z "$DOMAIN" ]]; then
   err "Домен обязателен."
   exit 1
