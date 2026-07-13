@@ -21,7 +21,16 @@ Bash-скрипт для настройки Hysteria2 на ноде Remnawave (r
 
 ## Запуск
 
+Скачать и сразу запустить:
+
 ```bash
+sudo bash <(curl -fsSL https://raw.githubusercontent.com/Origamidnd/h2-script/master/setup.sh)
+```
+
+Или вручную:
+
+```bash
+curl -fsSL -o setup.sh https://raw.githubusercontent.com/Origamidnd/h2-script/master/setup.sh
 sudo bash setup.sh
 ```
 
