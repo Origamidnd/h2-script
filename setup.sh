@@ -101,22 +101,36 @@ mkdir -p "$CERTS_DIR"
 if [[ -f "/etc/letsencrypt/live/$DOMAIN/fullchain.pem" ]]; then
   log "Сертификат для $DOMAIN уже существует, пропускаю выпуск (используй certbot renew для обновления)."
 else
-  PORT80_PID=$(ss -tlnp 'sport = :80' 2>/dev/null | grep -oP 'pid=\K[0-9]+' | head -n1)
-  PORT80_UNIT=""
-  if [[ -n "$PORT80_PID" ]]; then
-    PORT80_UNIT=$(systemctl status "$PORT80_PID" 2>/dev/null | awk 'NR==1{print $2}')
+  PORT80_CONTAINERS=()
+  if command -v docker >/dev/null 2>&1; then
+    mapfile -t PORT80_CONTAINERS < <(docker ps --filter "publish=80" -q 2>/dev/null)
   fi
 
-  if [[ -n "$PORT80_UNIT" ]]; then
-    warn "Порт 80 занят сервисом $PORT80_UNIT, останавливаю его на время выпуска сертификата..."
-    systemctl stop "$PORT80_UNIT"
-    trap 'systemctl start "$PORT80_UNIT"' EXIT
+  PORT80_UNIT=""
+  if [[ ${#PORT80_CONTAINERS[@]} -gt 0 ]]; then
+    warn "Порт 80 занят докер-контейнером(ами), останавливаю на время выпуска сертификата..."
+    docker stop "${PORT80_CONTAINERS[@]}" >/dev/null
+    trap 'docker start "${PORT80_CONTAINERS[@]}" >/dev/null' EXIT
+  else
+    PORT80_PID=$(ss -tlnp 'sport = :80' 2>/dev/null | grep -oP 'pid=\K[0-9]+' | head -n1)
+    if [[ -n "$PORT80_PID" ]]; then
+      PORT80_UNIT=$(systemctl status "$PORT80_PID" 2>/dev/null | awk 'NR==1{print $2}')
+    fi
+    if [[ -n "$PORT80_UNIT" ]]; then
+      warn "Порт 80 занят сервисом $PORT80_UNIT, останавливаю его на время выпуска сертификата..."
+      systemctl stop "$PORT80_UNIT"
+      trap 'systemctl start "$PORT80_UNIT"' EXIT
+    fi
   fi
 
   log "Выпускаю сертификат через certbot (standalone, порт 80)..."
   certbot certonly --standalone -d "$DOMAIN" --agree-tos -m "$EMAIL" --non-interactive
 
-  if [[ -n "$PORT80_UNIT" ]]; then
+  if [[ ${#PORT80_CONTAINERS[@]} -gt 0 ]]; then
+    trap - EXIT
+    docker start "${PORT80_CONTAINERS[@]}" >/dev/null
+    log "Запустил обратно контейнер(ы): ${PORT80_CONTAINERS[*]}"
+  elif [[ -n "$PORT80_UNIT" ]]; then
     trap - EXIT
     systemctl start "$PORT80_UNIT"
     log "Запустил $PORT80_UNIT обратно."
