@@ -101,8 +101,26 @@ mkdir -p "$CERTS_DIR"
 if [[ -f "/etc/letsencrypt/live/$DOMAIN/fullchain.pem" ]]; then
   log "Сертификат для $DOMAIN уже существует, пропускаю выпуск (используй certbot renew для обновления)."
 else
+  PORT80_PID=$(ss -tlnp 'sport = :80' 2>/dev/null | grep -oP 'pid=\K[0-9]+' | head -n1)
+  PORT80_UNIT=""
+  if [[ -n "$PORT80_PID" ]]; then
+    PORT80_UNIT=$(systemctl status "$PORT80_PID" 2>/dev/null | awk 'NR==1{print $2}')
+  fi
+
+  if [[ -n "$PORT80_UNIT" ]]; then
+    warn "Порт 80 занят сервисом $PORT80_UNIT, останавливаю его на время выпуска сертификата..."
+    systemctl stop "$PORT80_UNIT"
+    trap 'systemctl start "$PORT80_UNIT"' EXIT
+  fi
+
   log "Выпускаю сертификат через certbot (standalone, порт 80)..."
   certbot certonly --standalone -d "$DOMAIN" --agree-tos -m "$EMAIL" --non-interactive
+
+  if [[ -n "$PORT80_UNIT" ]]; then
+    trap - EXIT
+    systemctl start "$PORT80_UNIT"
+    log "Запустил $PORT80_UNIT обратно."
+  fi
 fi
 
 log "Копирую сертификат в $CERTS_DIR..."
