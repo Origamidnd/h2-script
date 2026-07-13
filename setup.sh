@@ -27,10 +27,10 @@ if [[ -z "$DOMAIN" ]]; then
 fi
 
 read -rp "Email для Let's Encrypt: " EMAIL
-if [[ -z "$EMAIL" ]]; then
-  err "Email обязателен."
-  exit 1
-fi
+while [[ ! "$EMAIL" =~ ^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$ ]]; do
+  warn "\"$EMAIL\" не похож на email (возможно, лишний символ прилетел от переключения раскладки в терминале)."
+  read -rp "Email для Let's Encrypt: " EMAIL
+done
 
 read -rp "Путь к docker-compose.yml remnanode [/opt/remnanode/docker-compose.yml]: " COMPOSE_PATH
 COMPOSE_PATH="${COMPOSE_PATH:-/opt/remnanode/docker-compose.yml}"
