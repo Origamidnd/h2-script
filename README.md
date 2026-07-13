@@ -24,8 +24,10 @@ Bash-скрипт для настройки Hysteria2 на ноде Remnawave (r
 Скачать и сразу запустить:
 
 ```bash
-sudo bash <(curl -fsSL https://raw.githubusercontent.com/Origamidnd/h2-script/master/setup.sh)
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/Origamidnd/h2-script/master/setup.sh)"
 ```
+
+(process substitution `<(...)` тут не подходит — sudo закрывает лишние файловые дескрипторы у дочернего процесса, и `/dev/fd/...` становится недоступен)
 
 Или вручную:
 
